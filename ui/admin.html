@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>管理员 - {{ game_name }}</title>
+</head>
+<body>
+    <div>管理员处理</div>
+    <form>
+        <label for="admin_username">用户名：</label>
+        <input type="text" id="admin_username" name="admin_username" value=""><br>
+    </form>
+    <button onclick="add_admin()">添加</button>
+    <button onclick="remove_admin()">删除</button>
+    <div id="admin_message" style="color: red"></div>
+    <script>
+        const admin_username = document.getElementById('admin_username')
+        const admin_manage_message = document.getElementById('admin_message')
+
+        async function add_admin() {
+            await fetch('/admin_add', {
+                method: 'POST',
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    'username': admin_username.value
+                })
+            }).then(response => response.json())
+                .then(response => {
+                    admin_manage_message.innerText = response['result']
+                })
+        }
+
+        async function remove_admin() {
+            await fetch('/admin_remove', {
+                method: 'POST',
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    'username': admin_username.value
+                })
+            }).then(response => response.json())
+                .then(response => {
+                    admin_manage_message.innerText = response['result']
+                })
+        }
+    </script>
+</body>
+</html>

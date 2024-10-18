@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>修改用户信息 - {{ user_name }} - {{ game_name }}</title>
+    <style>
+        #avatar-image {
+            width: 128px;
+            height: 128px;
+        }
+    </style>
+</head>
+<body>
+    <h1>修改用户信息</h1>
+    <div>@{{ user_id }}</div>
+    <form>
+        <label for="nickname">昵称：</label>
+        <input type="text" id="nickname" name="nickname" value="{{ user_name }}"><br>
+        <label for="avatar">头像：</label>
+        <input type="file" id="avatar" name="avatar" accept="image/*" /><br>
+        <img id="avatar-image" alt="user avatar" src="{{ user_avatar }}" />
+    </form>
+    <div>
+        <button onclick="update_info()">更新</button>
+        <button onclick="window.location.href='/user'">返回</button>
+    </div>
+    <div id="error-message" style="color: rgba(255, 0, 0, 1.0)"></div>
+    <script>
+        const nickname = document.getElementById('nickname')
+        const error_message = document.getElementById('error-message')
+        const avatar = document.getElementById('avatar')
+        const avatar_image = document.getElementById('avatar-image')
+        const avatar_default = avatar_image.src
+
+        const reset_avatar = () => {
+            avatar_image.src = '/statics/default_avatar.png'
+        }
+
+        avatar.addEventListener('change', (event) => {
+            let files = event.target.files;
+            if (files.length !== 1) {
+                reset_avatar()
+                return;
+            }
+            let file = files[0];
+            if (!file.type.match('image.*')) {
+                reset_avatar()
+                return;
+            }
+            const reader = new FileReader()
+            reader.onload = (e) => {
+                avatar_image.src = e.target.result
+            }
+            reader.onerror = (err) => {
+                console.log(err)
+                reset_avatar()
+            }
+            reader.readAsDataURL(file)
+        });
+
+        async function update_info() {
+            let avatar_data = avatar_image.src
+            if(avatar_data === avatar_default) {
+                avatar_data = ''
+            }
+
+            await fetch('/update_info', {
+                method: 'POST',
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    'nickname': nickname.value,
+                    'avatar': avatar_data
+                })
+            }).then(response => response.json())
+                .then(response => {
+                    if(response['result'] === 'nickname') {
+                      error_message.innerText = '无效的昵称'
+                        nickname.select()
+                        nickname.focus()
+                      return
+                    }
+                    if(response['result'] === 'avatar') {
+                        error_message.innerText = '无效的头像选择'
+                    }
+                    window.location.href = '/user'
+                })
+        }
+    </script>
+</body>
+</html>

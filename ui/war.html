@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>大仙牛战争 - {{ game_name }}</title>
+</head>
+<body>
+    <h1>大仙牛战争</h1>
+    <div>参战选手：</div>
+    <div id="players">
+    </div>
+    <br>
+    <div>战报：</div>
+    <div id="info">
+
+    </div>
+    <button id="back" onclick="window.location.href='/user'" disabled>返回</button>
+    <script>
+        const players = document.getElementById('players')
+        const logs = document.getElementById('info')
+        const back_button = document.getElementById('back')
+        let player_names = []
+        let war_progress = {}
+        let hp_bars = []
+        let current_step = {}
+
+        function scrollToBottom() {
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+
+        function show_next_step() {
+            let steps = current_step['steps']
+            if (steps.length > 0) {
+                let target = steps.shift()
+                // Render the step.
+                let text_line = document.createElement('div')
+                text_line.innerText = player_names[target[0]] + ' 向 ' + player_names[target[1]] + ' 发起了进攻，造成了 ' + target[2] + ' 点伤害'
+                logs.append(text_line)
+                scrollToBottom()
+            }
+            // Update the HP bars.
+            const hp_bar_num = current_step['hp_bar']
+            for(let i=0; i<hp_bars.length; ++i) {
+                hp_bars[i].innerText = Math.ceil(hp_bar_num[i] * 100) + '%/100%'
+            }
+            if (current_step['death'].length > 0) {
+                const death_list = current_step['death']
+                for(let i=0; i<death_list.length; ++i) {
+                    let text_line = document.createElement('div')
+                    text_line.innerText = player_names[death_list[i]] + ' 败退！'
+                    logs.append(text_line)
+                }
+                scrollToBottom()
+            }
+            // Prepare the new step.
+            if (war_progress['progress'].length > 0) {
+                current_step = war_progress['progress'].shift()
+                setTimeout(show_next_step, 1000)
+                return
+            }
+            // Show the winner.
+            let text_line = document.createElement('div')
+            const winner = war_progress['winner']
+            if(winner.length === 0) {
+                text_line.innerText = '本次战争中没有人存活下来'
+            } else {
+                text_line.innerText = '恭喜 ' + player_names[winner[0]] + ' 赢得胜利！'
+            }
+            logs.append(text_line)
+            scrollToBottom()
+            // Release the back button.
+            back_button.removeAttribute('disabled')
+        }
+
+        function init_war() {
+            player_names = war_progress['players']
+            for (let i=0; i<player_names.length; ++i) {
+                // Create player.
+                let p = document.createElement('div')
+                p.innerText = player_names[i] + '：'
+                // Create HP bar.
+                let hp_bar = document.createElement('span')
+                hp_bar.id = 'player-' + i + '-hp'
+                hp_bar.innerText = '100%/100%'
+                p.append(hp_bar)
+                hp_bars.push(hp_bar)
+                players.append(p)
+            }
+            // Set the current step.
+            current_step = war_progress['progress'].shift()
+            setTimeout(show_next_step, 1000)
+        }
+
+        async function start_war() {
+            await fetch('/war_start', {
+                method: 'POST'
+            }).then(response => response.json())
+                .then(response => {
+                    war_progress = response
+                    init_war()
+                })
+        }
+
+        start_war()
+    </script>
+</body>
+</html>

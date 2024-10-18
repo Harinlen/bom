@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ user_name }} - {{ game_name }}</title>
+    <style>
+        #player-avatar {
+            width: 128px;
+            height: 128px;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ user_name }}</h1>
+    <div>@{{ user_id }}</div>
+    <img id="player-avatar" alt="user avatar" src="{{ player_avatar }}" />
+    <div>修炼中……</div>
+    <div>境界：<span id="player-lv">{{ player_lv_text }}</span></div>
+    <div>经验值：<span id="player-exp">{{ player_exp }}</span></div>
+    <div>HP：<span id="player-hp">{{ player_hp }}</span></div>
+    <div>攻击：<span id="player-atk">{{ player_atk }}</span></div>
+    <div>防御：<span id="player-def">{{ player_def }}</span></div>
+    <div>回避：<span id="player-eva">{{ player_eva }}</span></div>
+    <div>速度：<span id="player-spd">{{ player_spd }}</span></div>
+    <br>
+    <button onclick="levelUp()">突破</button>
+    <div style="color: red">注意：每次突破失败会遭遇雷劫损失最高 {{ percent_lost }}% 的属性。</div>
+    <div style="color: red">连续失败六次会跌回同境界初级，连续失败十二次将跌回凡人。</div>
+    <div style="color: red">每一阶段需要达到一定经验才有可能成功，超过该经验的部分将转化为额外成功率。</div>
+    <div style="color: red">当前阶段突破所需最少经验：<span id="exp-required-min">{{ exp_required_min }}</span>，突破原始成功率为：<span id="exp-up-ratio">{{ exp_up_ratio }}</span>%</div>
+    <div>
+        战斗：
+        <button onclick="window.location.href='/war'">开启大仙牛战争</button>
+    </div>
+    <div>
+        系统：
+        <button onclick="window.location.href='/farm'">农场</button>
+    </div>
+    <div>
+        用户：
+        <button onclick="window.location.href='/update_info'">修改用户信息</button>
+        <button onclick="window.location.href='/update_password'">修改密码</button>
+        <button onclick="logout()">退出登录</button>
+    </div>
+    <script>
+        const time_to_update = {{ time_interval }}
+        const update_interval = time_to_update * 1000;
+
+        const label_lv = document.getElementById('player-lv')
+        const label_exp = document.getElementById('player-exp')
+        const label_hp = document.getElementById('player-hp')
+        const label_atk = document.getElementById('player-atk')
+        const label_def = document.getElementById('player-def')
+        const label_eva = document.getElementById('player-eva')
+        const label_spd = document.getElementById('player-spd')
+        const exp_required_min = document.getElementById('exp-required-min')
+        const exp_up_ratio = document.getElementById('exp-up-ratio')
+
+        const updateUserInfo = (response) => {
+            if (Object.keys(response).length > 0) {
+                // Update the label shown.
+                label_lv.innerText = response['lv']
+                label_exp.innerText = response['exp']
+                label_hp.innerText = response['hp']
+                label_atk.innerText = response['attack']
+                label_def.innerText = response['defense']
+                label_eva.innerText = response['evasion']
+                label_spd.innerText = response['speed']
+                exp_required_min.innerText = response['exp_required_min']
+                exp_up_ratio.innerText = response['exp_up_ratio']
+            }
+        }
+
+        const levelUp = () => {
+            fetch('/level_up', {
+                method: 'POST',
+            }).then(response => response.json())
+                .then(response => {
+                    updateUserInfo(response)
+                })
+        }
+
+        const addExp = () => {
+            fetch('/add_exp', {
+                method: 'POST',
+            }).then(response => response.json())
+                .then(response => {
+                    updateUserInfo(response)
+                    setTimeout(addExp, update_interval)
+                })
+                .catch(error => {
+                    //Trial later
+                    setTimeout(addExp, update_interval)
+                })
+        }
+
+        setTimeout(addExp, update_interval)
+
+        const logout = () => {
+            window.location.href = '/logout'
+        }
+    </script>
+</body>
+</html>

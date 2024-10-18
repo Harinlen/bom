@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>注册 - {{ game_name }}</title>
+    <style>
+        #avatar-image {
+            width: 128px;
+            height: 128px;
+        }
+    </style>
+    <script type="text/javascript" src="/statics/sha256.js"></script>
+</head>
+<body>
+    <h1>注册新用户</h1>
+    <form>
+        <label for="uname">用户名：</label>
+        <input type="text" id="uname" name="username" value=""><br>
+        <label for="passkey">密码：</label>
+        <input type="password" id="passkey" name="passkey" value=""><br>
+        <label for="nickname">昵称：</label>
+        <input type="text" id="nickname" name="nickname" value=""><br>
+        <label for="avatar">头像：</label>
+        <input type="file" id="avatar" name="avatar" accept="image/*" /><br>
+        <img id="avatar-image" alt="user avatar" src="/statics/default_avatar.png" />
+    </form>
+    <button onclick="register_user()">创建新账户</button>
+    <button onclick="window.location.href='/'">返回</button>
+    <div id="error-message" style="color: rgba(255, 0, 0, 1.0)"></div>
+    <script>
+        const uname = document.getElementById('uname')
+        const passkey = document.getElementById('passkey')
+        const nickname = document.getElementById('nickname')
+        const avatar = document.getElementById('avatar')
+        const avatar_image = document.getElementById('avatar-image')
+        const error_message = document.getElementById('error-message')
+        const avatar_default = avatar_image.src
+
+        const reset_avatar = () => {
+            avatar_image.src = '/statics/default_avatar.png'
+        }
+
+        avatar.addEventListener('change', (event) => {
+            let files = event.target.files;
+            if (files.length !== 1) {
+                reset_avatar()
+                return;
+            }
+            let file = files[0];
+            if (!file.type.match('image.*')) {
+                reset_avatar()
+                return;
+            }
+            const reader = new FileReader()
+            reader.onload = (e) => {
+                avatar_image.src = e.target.result
+            }
+            reader.onerror = (err) => {
+                console.log(err)
+                reset_avatar()
+            }
+            reader.readAsDataURL(file)
+        });
+
+        async function register_user() {
+            let avatar_data = avatar_image.src
+            if(avatar_data === avatar_default) {
+                avatar_data = ''
+            }
+
+            await fetch('/register', {
+                method: 'POST',
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    username: uname.value,
+                    password: sha256(passkey.value),
+                    nickname: nickname.value,
+                    avatar: avatar_data
+                })
+            }).then(response => {
+                return response.json()
+            }).then(response => {
+                if(response['result'] === 'ok') {
+                    window.location.href = '/'
+                } else {
+                    // Request to change the username.
+                    error_message.innerHTML = '用户名已被占用'
+                    uname.select()
+                    uname.focus()
+                }
+            })
+        }
+    </script>
+</body>
+</html>

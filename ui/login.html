@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>登录 - {{ game_name }}</title>
+    <script type="text/javascript" src="/statics/sha256.js"></script>
+</head>
+<body>
+    <h1>登录</h1>
+    <div>
+        <form>
+          <label for="uname">用户名：</label>
+          <input type="text" id="uname" name="username" value=""><br>
+          <label for="passkey">密码：</label>
+          <input type="password" id="passkey" name="passkey" value=""><br>
+        </form>
+    </div>
+    <button onclick="login_user()">登录</button>
+    <button onclick="window.location.href='/'">返回</button>
+    <div id="error-message" style="color: rgba(255, 0, 0, 1.0)"></div>
+    <script>
+        const uname = document.getElementById('uname')
+        const passkey = document.getElementById('passkey')
+        const error_message = document.getElementById('error-message')
+
+        async function login_user() {
+            await fetch('/login', {
+                method: 'POST',
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    username: uname.value,
+                    password: sha256(passkey.value)
+                })
+            }).then(response => response.json())
+                .then(response => {
+                    if(response['token'].length === 0) {
+                        // Show error.
+                        error_message.innerHTML = '用户名或密码错误'
+                    } else {
+                        // Set the user token to cookie.
+                        document.cookie = 'mtc_token='+response['token']
+                        // Goto user page.
+                        window.location.href = '/user'
+                    }
+                })
+        }
+    </script>
+</body>
+</html>
