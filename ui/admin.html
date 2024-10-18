@@ -3,45 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <title>管理员 - {{ game_name }}</title>
+    <link href="/statics/core.css" rel="stylesheet" crossorigin="anonymous">
 </head>
 <body>
-    <div>管理员处理</div>
-    <form>
-        <label for="admin_username">用户名：</label>
-        <input type="text" id="admin_username" name="admin_username" value=""><br>
-    </form>
-    <button onclick="add_admin()">添加</button>
-    <button onclick="remove_admin()">删除</button>
-    <div id="admin_message" style="color: red"></div>
-    <script>
-        const admin_username = document.getElementById('admin_username')
-        const admin_manage_message = document.getElementById('admin_message')
+    <h1>系统管理</h1>
+    <div>
+        <h2>管理员</h2>
+        <form>
+            <label for="admin_username">用户名：</label>
+            <input type="text" id="admin_username" name="admin_username" value=""><br>
+        </form>
+        <div id="admin_message" style="color: red"></div>
+        <div>
+            <button onclick="add_admin()">添加</button>
+            <button onclick="remove_admin()">删除</button>
+            <script>
+                const admin_username = document.getElementById('admin_username')
+                const admin_manage_message = document.getElementById('admin_message')
 
-        async function add_admin() {
-            await fetch('/admin_add', {
-                method: 'POST',
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    'username': admin_username.value
-                })
-            }).then(response => response.json())
-                .then(response => {
-                    admin_manage_message.innerText = response['result']
-                })
-        }
+                async function add_admin() {
+                    await fetch('/admin_add', {
+                        method: 'POST',
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({
+                            'username': admin_username.value
+                        })
+                    }).then(response => response.json())
+                        .then(response => {
+                            admin_manage_message.innerText = response['result']
+                        })
+                }
 
-        async function remove_admin() {
-            await fetch('/admin_remove', {
-                method: 'POST',
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    'username': admin_username.value
-                })
-            }).then(response => response.json())
-                .then(response => {
-                    admin_manage_message.innerText = response['result']
-                })
-        }
-    </script>
+                async function remove_admin() {
+                    await fetch('/admin_remove', {
+                        method: 'POST',
+                        headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({
+                            'username': admin_username.value
+                        })
+                    }).then(response => response.json())
+                        .then(response => {
+                            admin_manage_message.innerText = response['result']
+                        })
+                }
+            </script>
+        </div>
+    </div>
+    <div>
+        <h2>道具类型</h2>
+        <table>
+            <tbody id="item-type-table">
+            <tr>
+                <th>类型ID</th>
+                <th>图标</th>
+                <th>名称</th>
+                <th>管理</th>
+            </tr>
+            <tr id="item-add-row">
+                <td></td>
+                <td><img class="item-icon" id="item-type-icon" hidden/><input type="file" id="item-type-icon-select" name="item-type-icon-select" accept="image/*" /></td>
+                <td><input type="text" id="item-type-name" name="item-type-name" value=""></td>
+                <td><button onclick="add_item_type()">添加</button></td>
+            </tr>
+            </tbody>
+        </table>
+        <div id="item-type-message" style="color: red"></div>
+        <script>
+            const item_type_table = document.getElementById('item-type-table')
+            const item_type_add_row = document.getElementById('item-add-row')
+            const item_type_icon = document.getElementById('item-type-icon')
+            const item_type_icon_select = document.getElementById('item-type-icon-select')
+            const item_type_name = document.getElementById('item-type-name')
+            const item_type_message = document.getElementById('item-type-message')
+            let item_type_rows = []
+
+            const reset_item_type_icon = () => {
+                item_type_icon.src = ''
+                item_type_icon.hidden = true
+            }
+
+            item_type_icon_select.addEventListener('change', (event) => {
+                let files = event.target.files;
+                if (files.length !== 1) {
+                    reset_item_type_icon()
+                    return;
+                }
+                let file = files[0];
+                if (!file.type.match('image.*')) {
+                    reset_item_type_icon()
+                    return;
+                }
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    item_type_icon.src = e.target.result
+                    item_type_icon.hidden = false
+                }
+                reader.onerror = (err) => {
+                    console.log(err)
+                    reset_item_type_icon()
+                }
+                reader.readAsDataURL(file)
+            });
+
+            function clear_item_type_message() {
+                item_type_message.innerText = ''
+            }
+
+            function clear_add_item_type() {
+                item_type_icon.src = ''
+                item_type_icon.hidden = true
+                item_type_icon_select.value = null
+                item_type_name.value = null
+            }
+
+            function remove_item_type() {
+                const column = this.parentElement
+                const row = column.parentElement
+                const item_type_id = row.firstElementChild.innerText
+                console.log(item_type_id)
+            }
+
+            async function item_types_update() {
+                // Fetch the item types.
+                await fetch('/items/list_types', {
+                    method: 'GET',
+                }).then(response => response.json())
+                    .then(response => {
+                        // Loop and remove all the rows.
+                        for (let i = 0; i < item_type_rows.length; i++) {
+                            item_type_rows[i].remove()
+                        }
+                        item_type_rows = []
+                        //Add response to the result.
+                        const server_types = response['types']
+                        for (let i = 0; i < server_types.length; i++) {
+                            let item_row = document.createElement('tr')
+                            let item_column
+                            item_column = document.createElement('td')
+                            item_column.innerText = server_types[i]['id']
+                            item_row.appendChild(item_column)
+
+                            item_column = document.createElement('td')
+                            let item_icon = document.createElement('img')
+                            item_icon.classList.add('item-icon')
+                            item_icon.src = server_types[i]['icon']
+                            if(server_types[i]['icon'].length === 0) {
+                                item_icon.hidden = true
+                            }
+                            item_column.appendChild(item_icon)
+                            item_row.appendChild(item_column)
+
+                            item_column = document.createElement('td')
+                            item_column.innerText = server_types[i]['name']
+                            item_row.appendChild(item_column)
+
+                            //Manage panel.
+                            item_column = document.createElement('td')
+                            item_type_remove = document.createElement('button')
+                            item_type_remove.innerText = '移除'
+                            item_type_remove.onclick = remove_item_type
+                            item_column.appendChild(item_type_remove)
+                            item_row.appendChild(item_column)
+
+                            item_type_table.insertBefore(item_row, item_type_add_row)
+
+                            item_type_rows.push(item_row)
+                        }
+                    })
+            }
+
+            item_types_update()
+
+            async function add_item_type() {
+                clear_item_type_message()
+                if (item_type_name.value.length === 0) {
+                    item_type_message.innerText = '请输入道具类型名称'
+                    item_type_name.focus()
+                    return
+                }
+                await fetch('/items/add_type', {
+                    method: 'POST',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        'name': item_type_name.value,
+                        'icon': item_type_icon.src
+                    })
+                }).then(response => response.json())
+                    .then(response => {
+                        clear_add_item_type()
+                        item_types_update()
+                    })
+                    .catch(err => {
+
+                    })
+            }
+        </script>
+        <div id="item_message" style="color: red"></div>
+    </div>
 </body>
 </html>

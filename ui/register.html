@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>注册 - {{ game_name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         #avatar-image {
             width: 128px;
@@ -18,6 +19,8 @@
         <input type="text" id="uname" name="username" value=""><br>
         <label for="passkey">密码：</label>
         <input type="password" id="passkey" name="passkey" value=""><br>
+        <label for="passkey-again">确认密码：</label>
+        <input type="password" id="passkey-again" name="passkey-again" value=""><br>
         <label for="nickname">昵称：</label>
         <input type="text" id="nickname" name="nickname" value=""><br>
         <label for="avatar">头像：</label>
@@ -30,6 +33,7 @@
     <script>
         const uname = document.getElementById('uname')
         const passkey = document.getElementById('passkey')
+        const passkey_again = document.getElementById('passkey-again')
         const nickname = document.getElementById('nickname')
         const avatar = document.getElementById('avatar')
         const avatar_image = document.getElementById('avatar-image')
@@ -63,6 +67,12 @@
         });
 
         async function register_user() {
+            if (passkey.value !== passkey_again) {
+                error_message.innerHTML = '两次密码不一致'
+                passkey.select()
+                passkey.focus()
+            }
+
             let avatar_data = avatar_image.src
             if(avatar_data === avatar_default) {
                 avatar_data = ''

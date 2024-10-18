@@ -39,6 +39,27 @@ class FailedCounter(SQLModel, table=True):
     fails: int = Field(sa_column=Column(Integer, nullable=False))
 
 
+class ItemType(SQLModel, table=True):
+    tid: UUID = Field(primary_key=True)
+    name: str = Field(index=True, nullable=False)
+    icon: str
+
+
+class Item(SQLModel, table=True):
+    iid: UUID = Field(index=True, primary_key=True)
+    tid: UUID = Field(nullable=False)
+    name: str = Field(index=True, nullable=False)
+    icon: str
+    description: str
+    operate: str
+
+
+class Backpack(SQLModel, table=True):
+    uid: UUID = Field(primary_key=True)
+    iid: UUID = Field(primary_key=True)
+    amount: int
+
+
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///storage/{sqlite_file_name}"
 
