@@ -60,6 +60,11 @@ class Backpack(SQLModel, table=True):
     amount: int
 
 
+class Money(SQLModel, table=True):
+    uid: UUID = Field(primary_key=True)
+    amount: int
+
+
 sqlite_file_name = "database.db"
 sqlite_url = f"sqlite:///storage/{sqlite_file_name}"
 

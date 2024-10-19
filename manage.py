@@ -11,7 +11,7 @@ def main():
                 for user in result:
                     print('{} \t {}'.format(user.uid, user.username))
         elif command == 'admin':
-            uid = input('admin uid? ')
+            uid = input('uid? ')
             try:
                 user_id = UUID(uid)
             except ValueError:
@@ -46,6 +46,8 @@ def main():
                 session.add(result)
                 session.commit()
                 session.refresh(result)
+        elif command == 'init_items':
+            pass
         elif command == 'exit':
             break
         else:

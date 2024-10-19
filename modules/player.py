@@ -1,3 +1,5 @@
+import math
+import random
 import secrets
 from core import conf
 from datetime import datetime
@@ -31,8 +33,8 @@ def random_int(v_min: int, v_max: int) -> int:
 
 
 def is_lucky(v_luck: int) -> bool:
-    # This is a fake value.
     if v_luck < 1 or v_luck > 300:
+        # This is a fake value.
         return False
     # Generate a random value from 0 to 254.
     guess = random_int(0, 254)
@@ -45,22 +47,20 @@ def random_with_luck(v_min: int, v_max: int, v_luck: int) -> int:
     # If you are the most lucky people, give the max.
     if v_luck >= 255.0:
         return v_max
+    # The most bad luck will always get the lowest value.
+    if v_luck <= 0.0:
+        return v_min
 
+    # Reset the seed.
+    random.seed(datetime.now().timestamp())
     # Guess the base.
-    base = random_int(v_min, v_max)
+    v_range = v_max - v_min
+    v_center = v_min + v_range / 2
+    v_patch = 1.0 + (v_luck - 127.0) / 255.0
+    v_raw = math.ceil(random.gauss(v_center * v_patch, v_range / 6))
 
-    if is_lucky(v_luck):
-        # Generate a buffer value, the buffer value max is 1/4 maximum.
-        buffer = random_int(v_min, int(v_min + (v_max - v_min) / 4))
-        if base + buffer < v_max:
-            # We can buf.
-            base += buffer
-        else:
-            # Choose the max between the buffer value and original value.
-            base = max(base, buffer)
-
-    # Generate the random value from the new range.
-    return base
+    # Make sure the raw is in the range.
+    return max(v_min, min(v_raw, v_max))
 
 
 class Player:
@@ -184,7 +184,6 @@ def add_exp(player: Player, session: database.SessionDep):
 
 
 def level_up(player: Player, session: database.SessionDep):
-    # ---- shi shin system ----
     # Check should up to next level.
     current_lv_info = player.level_info()
 
@@ -193,14 +192,13 @@ def level_up(player: Player, session: database.SessionDep):
         player.exp = 0
         player.lv += 1
         # Adding values to all attribute.
-        max_range = int(current_lv_info[1] / 4)
-        player.hp += player.random_with_luck(1, max_range)
-        player.attack += player.random_with_luck(1, max_range)
-        player.defense += player.random_with_luck(1, max_range)
-        player.evasion += player.random_with_luck(1, max_range)
-        player.speed += player.random_with_luck(1, max_range)
+        player.hp += player.random_with_luck(1, int(player.hp / 4))
+        player.attack += player.random_with_luck(1, int(player.attack / 4))
+        player.defense += player.random_with_luck(1, int(player.defense / 4))
+        player.evasion += player.random_with_luck(1, int(player.evasion / 4))
+        player.speed += player.random_with_luck(1, int(player.speed / 4))
         # Change the player luck to a new level.
-        player.luck = int(player.random_with_luck(1, 255))
+        player.luck = int(player.random_with_luck(0, 255))
         player.save(session)
 
     def apply_fail():

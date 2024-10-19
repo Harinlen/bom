@@ -2,10 +2,37 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>管理员 - {{ game_name }}</title>
     <link href="/statics/core.css" rel="stylesheet" crossorigin="anonymous">
 </head>
 <body>
+    <script>
+        function bind_img_with_file_select(img_element, file_select_element, reset_func) {
+            file_select_element.addEventListener('change', (event) => {
+                let files = event.target.files;
+                if (files.length !== 1) {
+                    reset_func()
+                    return;
+                }
+                let file = files[0];
+                if (!file.type.match('image.*')) {
+                    reset_func()
+                    return;
+                }
+                const reader = new FileReader()
+                reader.onload = (e) => {
+                    img_element.src = e.target.result
+                    img_element.hidden = false
+                }
+                reader.onerror = (err) => {
+                    console.log(err)
+                    reset_func()
+                }
+                reader.readAsDataURL(file)
+            });
+        }
+    </script>
     <h1>系统管理</h1>
     <div>
         <h2>管理员</h2>
@@ -59,7 +86,7 @@
                 <th>名称</th>
                 <th>管理</th>
             </tr>
-            <tr id="item-add-row">
+            <tr id="item-type-add-row">
                 <td></td>
                 <td><img class="item-icon" id="item-type-icon" hidden/><input type="file" id="item-type-icon-select" name="item-type-icon-select" accept="image/*" /></td>
                 <td><input type="text" id="item-type-name" name="item-type-name" value=""></td>
@@ -70,40 +97,25 @@
         <div id="item-type-message" style="color: red"></div>
         <script>
             const item_type_table = document.getElementById('item-type-table')
-            const item_type_add_row = document.getElementById('item-add-row')
+            const item_type_add_row = document.getElementById('item-type-add-row')
             const item_type_icon = document.getElementById('item-type-icon')
             const item_type_icon_select = document.getElementById('item-type-icon-select')
             const item_type_name = document.getElementById('item-type-name')
             const item_type_message = document.getElementById('item-type-message')
+            let item_types = []
             let item_type_rows = []
 
-            const reset_item_type_icon = () => {
-                item_type_icon.src = ''
-                item_type_icon.hidden = true
+            function fetch_uid(button) {
+                const column = button.parentElement
+                const row = column.parentElement
+                return row.firstElementChild.innerText
             }
 
-            item_type_icon_select.addEventListener('change', (event) => {
-                let files = event.target.files;
-                if (files.length !== 1) {
-                    reset_item_type_icon()
-                    return;
-                }
-                let file = files[0];
-                if (!file.type.match('image.*')) {
-                    reset_item_type_icon()
-                    return;
-                }
-                const reader = new FileReader()
-                reader.onload = (e) => {
-                    item_type_icon.src = e.target.result
-                    item_type_icon.hidden = false
-                }
-                reader.onerror = (err) => {
-                    console.log(err)
-                    reset_item_type_icon()
-                }
-                reader.readAsDataURL(file)
-            });
+            bind_img_with_file_select(item_type_icon, item_type_icon_select,
+                                      () => {
+                                          item_type_icon.src = ''
+                                          item_type_icon.hidden = true
+                                      })
 
             function clear_item_type_message() {
                 item_type_message.innerText = ''
@@ -116,11 +128,45 @@
                 item_type_name.value = null
             }
 
-            function remove_item_type() {
+            async function save_item_type() {
                 const column = this.parentElement
                 const row = column.parentElement
+
+                let child = row.firstElementChild
                 const item_type_id = row.firstElementChild.innerText
-                console.log(item_type_id)
+                child = child.nextElementSibling
+                const item_icon = child.firstElementChild
+                const item_icon_data = item_icon.hidden ? '' : item_icon.src
+                child = child.nextElementSibling
+                const item_type_name = child.firstElementChild.value
+
+                await fetch('/items/update_type', {
+                    method: 'POST',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        'tid': item_type_id,
+                        'name': item_type_name,
+                        'icon': item_icon_data
+                    })
+                }).then(response => response.json())
+                    .then(response => {
+                        item_types_update()
+                    })
+            }
+
+            async function remove_item_type() {
+                const item_type_id = fetch_uid(this)
+
+                await fetch('/items/remove_type', {
+                    method: 'POST',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        'tid': item_type_id
+                    })
+                }).then(response => response.json())
+                .then(response => {
+                    item_types_update()
+                })
             }
 
             async function item_types_update() {
@@ -134,6 +180,8 @@
                             item_type_rows[i].remove()
                         }
                         item_type_rows = []
+                        //Save the item types.
+                        item_types = response['types']
                         //Add response to the result.
                         const server_types = response['types']
                         for (let i = 0; i < server_types.length; i++) {
@@ -151,28 +199,48 @@
                                 item_icon.hidden = true
                             }
                             item_column.appendChild(item_icon)
+                            let item_icon_edit = document.createElement('input')
+                            item_icon_edit.type = 'file'
+                            item_icon_edit.accept = 'image/*'
+                            item_icon_edit.reset_value = server_types[i]['icon']
+                            item_column.appendChild(item_icon_edit)
                             item_row.appendChild(item_column)
+                            bind_img_with_file_select(item_icon, item_icon_edit, () => {
+                                item_icon.src = item_icon_edit.reset_value
+                                if (item_icon_edit.reset_value.length === 0) {
+                                    item_icon.hidden = true
+                                }
+                            })
 
                             item_column = document.createElement('td')
-                            item_column.innerText = server_types[i]['name']
+                            let item_name = document.createElement('input')
+                            item_name.type = 'text'
+                            item_name.value = server_types[i]['name']
+                            item_column.appendChild(item_name)
                             item_row.appendChild(item_column)
 
                             //Manage panel.
                             item_column = document.createElement('td')
+                            item_type_save = document.createElement('button')
+                            item_type_save.innerText = '保存'
+                            item_type_save.onclick = save_item_type
+                            item_column.appendChild(item_type_save)
+
                             item_type_remove = document.createElement('button')
                             item_type_remove.innerText = '移除'
                             item_type_remove.onclick = remove_item_type
                             item_column.appendChild(item_type_remove)
+
                             item_row.appendChild(item_column)
 
                             item_type_table.insertBefore(item_row, item_type_add_row)
 
                             item_type_rows.push(item_row)
                         }
+                        //Update all the selects.
+                        update_item_type_selects()
                     })
             }
-
-            item_types_update()
 
             async function add_item_type() {
                 clear_item_type_message()
@@ -198,7 +266,229 @@
                     })
             }
         </script>
-        <div id="item_message" style="color: red"></div>
     </div>
+    <div>
+        <h2>道具</h2>
+        <div>搜索道具：<input type="text" id="item-search-name" name="item-search-name" value=""><button onclick="search_item_by_name()">搜索</button></div>
+        <div>搜索UID：<input type="text" id="item-search-id" name="item-search-id" value=""><button onclick="search_item_by_id()">搜索</button></div>
+        <div>搜索结果（如果超过10个，将只显示前10个）：</div>
+        <table>
+            <tbody id="item-table">
+            <tr>
+                <th>道具ID</th>
+                <th>道具类型</th>
+                <th>图标</th>
+                <th>名称</th>
+                <th>描述</th>
+                <th>操作</th>
+                <th>管理</th>
+            </tr>
+            <tr id="item-add-row">
+                <td></td>
+                <td><select class="item-type-select" id="item-type-select"></select></td>
+                <td><img class="item-icon" id="item-icon" hidden/><input type="file" id="item-icon-select" name="item-icon-select" accept="image/*" /></td>
+                <td><input type="text" id="item-name" name="item-name" value=""></td>
+                <td><input type="text" id="item-description" name="item-description" value=""></td>
+                <td><input type="text" id="item-op" name="item-op" value=""></td>
+                <td><button onclick="add_item()">添加</button></td>
+            </tr>
+            </tbody>
+        </table>
+        <div id="item_message" style="color: red"></div>
+        <script>
+            const item_message = document.getElementById('item_message')
+            const item_type = document.getElementById('item-type-select')
+            const item_name = document.getElementById('item-name')
+            const item_icon = document.getElementById('item-icon')
+            const item_icon_select = document.getElementById('item-icon-select')
+            const item_description = document.getElementById('item-description')
+            const item_op = document.getElementById('item-op')
+            const item_table = document.getElementById('item-table')
+            const item_add_row = document.getElementById('item-add-row')
+
+            let item_result = []
+            let item_method = null
+
+            const item_search_name = document.getElementById('item-search-name')
+            const item_search_id = document.getElementById('item-search-id')
+
+            bind_img_with_file_select(item_icon, item_icon_select,
+                                      () => {
+                                          item_icon.src = ''
+                                          item_icon.hidden = true
+                                      })
+
+            function set_item_table(item_table_data, method) {
+                for (let i = 0; i < item_result.length; i++) {
+                    item_result[i].remove()
+                }
+                //Reset the items.
+                item_result = []
+                item_method = method
+                // Create new items.
+                for (let i = 0; i < item_table_data.length; ++i) {
+                    let item_info = item_table_data[i]
+                    let item_row = document.createElement('tr')
+                    let item_column
+                    item_column = document.createElement('td')
+                    item_column.innerText = item_info['iid']
+                    item_row.appendChild(item_column)
+
+                    item_column = document.createElement('td')
+                    let col_select = document.createElement('select')
+                    col_select.classList.add('item-type-select')
+                    col_select.value = item_info['tid']
+                    item_column.appendChild(col_select)
+                    item_row.appendChild(item_column)
+
+                    item_column = document.createElement('td')
+                    item_row.appendChild(item_column)
+
+                    item_column = document.createElement('td')
+                    let item_name = document.createElement('input')
+                    item_name.type = 'text'
+                    item_name.value = item_info['name']
+                    item_column.appendChild(item_name)
+                    item_row.appendChild(item_column)
+
+                    item_column = document.createElement('td')
+                    let item_des = document.createElement('input')
+                    item_des.type = 'text'
+                    item_des.value = item_info['description']
+                    item_column.appendChild(item_des)
+                    item_row.appendChild(item_column)
+
+                    item_column = document.createElement('td')
+                    let item_op = document.createElement('input')
+                    item_op.type = 'text'
+                    item_op.value = item_info['op']
+                    item_column.appendChild(item_op)
+                    item_row.appendChild(item_column)
+
+                    item_column = document.createElement('td')
+                    let button_update = document.createElement('button')
+                    button_update.innerText = '保存'
+                    item_column.appendChild(button_update)
+                    let button_remove = document.createElement('button')
+                    button_remove.onclick = remove_item
+                    button_remove.innerText = '移除'
+                    item_column.appendChild(button_remove)
+                    item_row.appendChild(item_column)
+
+                    item_table.insertBefore(item_row, item_add_row)
+                    item_result.push(item_row)
+                }
+                // Update all the type select.
+                update_item_type_selects()
+                // Update the type value.
+                for(let i = 0; i < item_table_data.length; i++) {
+                    let target = item_result[i].children[1].children[0]
+                    target.value = item_table_data[i]['tid']
+                }
+            }
+
+            function set_item_type_list(item_type_select) {
+                const value_backup = item_type_select.value
+                item_type_select.innerHTML = ''
+                //Add item to select.
+                for (let i = 0; i < item_types.length; i++) {
+                    let item_row = document.createElement('option')
+                    item_row.setAttribute('value', item_types[i].id)
+                    item_row.innerText = item_types[i].name
+                    item_type_select.appendChild(item_row)
+                }
+                item_type_select.value = value_backup
+            }
+
+            function update_item_type_selects() {
+                let selects = document.getElementsByClassName('item-type-select')
+                for (let i = 0; i < selects.length; i++) {
+                    set_item_type_list(selects[i])
+                }
+            }
+
+            function clear_item_message() {
+                item_message.innerText = ''
+            }
+
+            async function search_item_by_id() {
+                await fetch('/items/search_by_id', {
+                    method: 'POST',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        'iid': item_search_id.value
+                    })
+                }).then(response => response.json())
+                        .then(response => {
+                            console.log(response)
+                        })
+            }
+
+            async function search_item_by_name() {
+                await fetch('/items/search_by_name', {
+                    method: 'POST',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        'name_part': item_search_name.value,
+                    })
+                }).then(response => response.json())
+                    .then(response => {
+                        set_item_table(response, search_item_by_name)
+                    })
+            }
+
+            async function remove_item() {
+                const item_id = fetch_uid(this)
+
+                await fetch('/items/remove', {
+                    method: 'POST',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        'iid': item_id
+                    })
+                }).then(response => response.json())
+                .then(response => {
+                    // Update the table.
+                    item_method()
+                })
+            }
+
+            async function add_item() {
+                clear_item_message()
+                if (item_name.value.length === 0) {
+                    item_message.innerText = '请输入道具类型名称'
+                    item_name.focus()
+                    return
+                }
+                await fetch('/items/add', {
+                    method: 'POST',
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        'tid': item_type.value,
+                        'name': item_name.value,
+                        'icon': item_icon.src,
+                        'description': item_description.value,
+                        'operate': item_op.value
+                    })
+                }).then(response => response.json())
+                    .then(response => {
+                        // Clear the add item.
+                        item_type.value = null
+                        item_name.value = ''
+                        item_icon.src = ''
+                        item_icon.hidden = true
+                        item_icon_select.value = null
+                        item_description.value = ''
+                        item_op.value = ''
+                    })
+                    .catch(err => {
+
+                    })
+            }
+        </script>
+    </div>
+    <script>
+        item_types_update()
+    </script>
 </body>
 </html>

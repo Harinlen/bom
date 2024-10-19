@@ -2,3 +2,13 @@
     width: 32px;
     height: 32px;
 }
+
+.item-type-url {
+    text-decoration: underline;
+    cursor: pointer;
+    color: blue;
+}
+
+.item-type-url.is-select {
+    font-weight: bold;
+}

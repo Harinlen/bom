@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>物品 - {{ game_name }}</title>
+    <link href="/statics/core.css" rel="stylesheet" crossorigin="anonymous">
+</head>
+<body>
+    <h1>物品</h1>
+    <div id="item_types"></div>
+    <table>
+        <tbody id="item_list">
+            <tr>
+                <th>名称</th>
+                <th>数量</th>
+                <th>操作</th>
+            </tr>
+        </tbody>
+    </table>
+    <div>
+        <button onclick="window.location.href='/user'">返回</button>
+    </div>
+    <script>
+        const item_type_elements = document.getElementById('item_types')
+        const item_list_element = document.getElementById('item_list')
+        let item_type_list = []
+        let item_list = []
+
+        function set_current_type(type_button) {
+            type_button.classList.add('is-select')
+
+        }
+
+        function show_type() {
+            for (let i = 0; i < item_type_list.length; i++) {
+                item_type_list[i].classList.remove('is-select')
+            }
+            set_current_type(this)
+        }
+
+        async function fetch_types() {
+            await fetch('/items/list_types', {
+                method: 'GET',
+            }).then(response => response.json())
+                .then(data => {
+                    // Create the item types.
+                    item_type_elements.innerHTML = ''
+                    let item_types = data['types']
+                    for (let i=0; i<item_types.length; i++) {
+                        let itemWrapper = document.createElement('div')
+                        itemWrapper.style.display = 'inline-block'
+                        itemWrapper.style.marginRight = '15px'
+                        let itemType = document.createElement('div')
+                        itemType.classList.add('item-type-url')
+                        itemType.setAttribute('tid', item_types[i]['id'])
+                        itemType.onclick = show_type
+                        let itemIcon = document.createElement('img')
+                        itemIcon.className = 'item-icon'
+                        itemIcon.setAttribute('src', item_types[i]['icon'])
+                        itemType.appendChild(itemIcon)
+                        let itemName = document.createElement('span')
+                        itemName.innerText = item_types[i]['name']
+                        itemType.appendChild(itemName)
+                        itemWrapper.appendChild(itemType)
+                        item_type_elements.appendChild(itemWrapper)
+
+                        item_type_list.push(itemType)
+                    }
+                    if(item_type_list.length > 0) {
+                        set_current_type(item_type_list[0])
+                    }
+                })
+        }
+
+        fetch_types()
+    </script>
+</body>
+</html>
